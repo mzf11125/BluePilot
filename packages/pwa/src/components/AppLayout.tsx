@@ -8,6 +8,7 @@ export const AppLayout = () => {
   const tabs = [
     { path: '/app', label: 'Home', icon: '🏠' },
     { path: '/app/trade', label: 'Trade', icon: '💱' },
+    { path: '/app/strategy', label: 'Strategy', icon: '📊' },
     { path: '/app/policy', label: 'Policy', icon: '⚙️' },
     { path: '/app/history', label: 'History', icon: '📜' }
   ];
@@ -47,7 +48,7 @@ export const AppLayout = () => {
                   : 'hover:bg-gray-100'
               }`}
             >
-              <span className="text-2xl mb-1">{tab.icon}</span>
+              <span className="text-xl mb-1">{tab.icon}</span>
               <span className="text-xs font-bold">{tab.label}</span>
             </button>
           ))}
