@@ -15,9 +15,11 @@ export interface TradeIntent {
 
 export interface SimulationResult {
   amountOut: string;
+  amountOutUSD: string;
   priceImpact: string;
   gasEstimate: string;
-  policyViolations: string[];
+  route: string[];
+  bestDex: string;
 }
 
 export interface UserPolicy {
@@ -26,4 +28,16 @@ export interface UserPolicy {
   cooldownSeconds: number;
   lastTradeTimestamp: number;
   tokenAllowlist: string[];
+}
+
+export interface PolicyCheck {
+  compliant: boolean;
+  violations: string[];
+}
+
+export interface TokenBalance {
+  token: string;
+  symbol: string;
+  balance: string;
+  usdValue: string;
 }

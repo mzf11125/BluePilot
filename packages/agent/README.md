@@ -1,14 +1,64 @@
 # BluePilot Agent API
 
-AI-powered agent API for BluePilot DeFi trading platform. Monitors RobinPump token launches, provides natural language trade execution, and integrates with deployed smart contracts on Base Sepolia.
+AI-powered agent API for hands-free DeFi trading with natural language commands, policy enforcement, and instant x402 payments.
+
+## 🌟 Key Differentiators
+
+### 1. ✅ Complete Trade Analysis
+Enhanced `/simulate` endpoint returns USD values, price impact, gas estimates, and ready-to-sign transactions in one call.
+
+### 2. ✅ Instant, Accountless Payments (x402)
+No API keys or signups—just pay with USDC per request.
+
+### 3. ✅ AI/Agent-Ready
+Natural language interface via OpenClaw Gateway with intent-based endpoints.
+
+### 4. ✅ Real-Time, On-Chain Data
+**CoinGecko API** for live token prices, direct smart contract calls, and live blockchain event monitoring.
+
+### 5. ✅ Customizable Policies
+Set trade limits, slippage tolerance, cooldowns, and token allowlists.
+
+### 6. ✅ Transparent Pricing
+
+| Endpoint | Price | What You Get |
+|----------|-------|--------------|
+| `/simulate` | $0.001 | Full trade analysis + ready-to-sign tx |
+| `/execute` | $0.005 | AI parsing + policy check + tx encoding |
+| `/policy/:address` | $0.0005 | On-chain policy retrieval |
+| `/policy/set` | $0.0005 | Policy update tx preparation |
+| `/portfolio/:address` | $0.001 | All balances + USD values |
+| `/alerts` | FREE | Token launch notifications |
+| `/price/:token` | FREE | Current token price |
+
+### 7. ✅ Developer Experience
+Complete TypeScript SDK with one-line trade execution.
 
 ## Features
 
 - 🔍 **Event Monitoring**: Real-time tracking of RobinPump token launches
 - 🤖 **AI Intent Parsing**: Natural language trade commands via OpenClaw Gateway (Gemini)
 - 💰 **Price Data**: Token prices from CoinGecko API
-- 📊 **Trade Simulation**: Preview trades before execution
+- 📊 **Trade Simulation**: Preview trades with complete analysis before execution
 - 🔐 **Policy Enforcement**: User-defined trading rules via smart contracts
+- 💳 **x402 Payments**: Instant USDC payments without API keys
+
+## Quick Start
+
+### SDK Usage
+
+```typescript
+import { BluePilotClient } from '@bluepilot/sdk';
+
+const client = new BluePilotClient({
+  privateKey: process.env.PRIVATE_KEY,
+  x402Enabled: true
+});
+
+// One-line trade execution
+const result = await client.simulateAndExecute("swap 0.1 ETH for USDC");
+console.log(`Trade executed! TX: ${result.txHash}`);
+```
 
 ## Setup
 

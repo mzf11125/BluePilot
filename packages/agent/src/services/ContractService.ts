@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import VaultRouterABI from '../../../contracts/artifacts/VaultRouter.sol/VaultRouter.json';
 import TradeExecutorABI from '../../../contracts/artifacts/TradeExecutor.sol/TradeExecutor.json';
-import { UserPolicy, SimulationResult } from '../types';
+import { UserPolicy, SimulationResult, PolicyCheck } from '../types';
 
 export class ContractService {
   private provider: ethers.JsonRpcProvider;
@@ -18,39 +18,71 @@ export class ContractService {
     this.tradeExecutor = new ethers.Contract(tradeExecutorAddress, TradeExecutorABI.abi, this.provider);
   }
 
-  async simulateTrade(tokenIn: string, tokenOut: string, amountIn: string): Promise<string> {
-    try {
-      const amountOut = await this.vaultRouter.simulateTrade(tokenIn, tokenOut, amountIn);
-      return amountOut.toString();
-    } catch (error: any) {
-      console.error('Simulation error:', error.message);
-      throw error;
+  async simulateTrade(tokenIn: string, tokenOut: string, amountIn: string): Promise<SimulationResult> {
+    const amountOut = await this.vaultRouter.simulateTrade(tokenIn, tokenOut, amountIn);
+    const gasEstimate = await this.vaultRouter.executeTrade.estimateGas(tokenIn, tokenOut, amountIn, 0);
+    
+    return {
+      amountOut: amountOut.toString(),
+      amountOutUSD: '0',
+      priceImpact: '0',
+      gasEstimate: gasEstimate.toString(),
+      route: [tokenIn, tokenOut],
+      bestDex: 'Uniswap V2'
+    };
+  }
+
+  async checkPolicy(userAddress: string, tokenIn: string, tokenOut: string, amountIn: string): Promise<PolicyCheck> {
+    const policy = await this.getUserPolicy(userAddress);
+    const violations: string[] = [];
+
+    if (BigInt(amountIn) > BigInt(policy.maxTradeSize)) {
+      violations.push(`Trade size exceeds limit: ${amountIn} > ${policy.maxTradeSize}`);
     }
+
+    const now = Math.floor(Date.now() / 1000);
+    if (now - policy.lastTradeTimestamp < policy.cooldownSeconds) {
+      violations.push(`Cooldown active: ${policy.cooldownSeconds - (now - policy.lastTradeTimestamp)}s remaining`);
+    }
+
+    if (policy.tokenAllowlist.length > 0 && !policy.tokenAllowlist.includes(tokenOut)) {
+      violations.push(`Token ${tokenOut} not in allowlist`);
+    }
+
+    return { compliant: violations.length === 0, violations };
   }
 
   async getUserPolicy(userAddress: string): Promise<UserPolicy> {
-    try {
-      const policy = await this.vaultRouter.getPolicy(userAddress);
-      return {
-        maxSlippageBps: Number(policy.maxSlippageBps),
-        maxTradeSize: policy.maxTradeSize.toString(),
-        cooldownSeconds: Number(policy.cooldownSeconds),
-        lastTradeTimestamp: Number(policy.lastTradeTimestamp),
-        tokenAllowlist: policy.tokenAllowlist
-      };
-    } catch (error: any) {
-      console.error('Get policy error:', error.message);
-      throw error;
-    }
+    const policy = await this.vaultRouter.getPolicy(userAddress);
+    return {
+      maxSlippageBps: Number(policy.maxSlippageBps),
+      maxTradeSize: policy.maxTradeSize.toString(),
+      cooldownSeconds: Number(policy.cooldownSeconds),
+      lastTradeTimestamp: Number(policy.lastTradeTimestamp),
+      tokenAllowlist: policy.tokenAllowlist
+    };
   }
 
   async getVaultBalance(userAddress: string, tokenAddress: string): Promise<string> {
-    try {
-      const balance = await this.vaultRouter.getVaultBalance(userAddress, tokenAddress);
-      return balance.toString();
-    } catch (error: any) {
-      console.error('Get balance error:', error.message);
-      throw error;
-    }
+    const balance = await this.vaultRouter.getVaultBalance(userAddress, tokenAddress);
+    return balance.toString();
+  }
+
+  encodePolicyUpdate(maxSlippageBps: number, maxTradeSize: string, cooldownSeconds: number, tokenAllowlist: string[]): string {
+    return this.vaultRouter.interface.encodeFunctionData('setPolicy', [
+      maxSlippageBps,
+      maxTradeSize,
+      cooldownSeconds,
+      tokenAllowlist
+    ]);
+  }
+
+  encodeExecuteTrade(tokenIn: string, tokenOut: string, amountIn: string, minAmountOut: string): string {
+    return this.vaultRouter.interface.encodeFunctionData('executeTrade', [
+      tokenIn,
+      tokenOut,
+      amountIn,
+      minAmountOut
+    ]);
   }
 }

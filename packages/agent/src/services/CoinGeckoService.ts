@@ -47,4 +47,9 @@ export class CoinGeckoService {
       return {};
     }
   }
+
+  formatUSD(amount: string, decimals: number, price: number): string {
+    const value = (Number(amount) / Math.pow(10, decimals)) * price;
+    return `$${value.toFixed(2)}`;
+  }
 }
