@@ -64,9 +64,38 @@ export const formatAddress = (address: string): string => {
 
 export const formatAmount = (amount: string | number, decimals = 4): string => {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  // Handle very small numbers
+  if (num < 0.0001 && num > 0) {
+    return num.toFixed(8).replace(/\.?0+$/, '');
+  }
+  
   return num.toLocaleString('en-US', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: decimals 
+  });
+};
+
+export const formatBalance = (balance: string | number): string => {
+  const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+  
+  // Handle zero
+  if (num === 0) return '0.00';
+  
+  // Handle very small numbers (show up to 8 decimals)
+  if (num < 0.0001) {
+    return num.toFixed(8).replace(/\.?0+$/, '');
+  }
+  
+  // Handle small numbers (show up to 6 decimals)
+  if (num < 1) {
+    return num.toFixed(6).replace(/\.?0+$/, '');
+  }
+  
+  // Handle normal numbers
+  return num.toLocaleString('en-US', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 4 
   });
 };
 
