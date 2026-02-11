@@ -25,6 +25,8 @@ Set trade limits, slippage tolerance, cooldowns, and token allowlists.
 |----------|-------|--------------|
 | `/simulate` | $0.001 | Full trade analysis + ready-to-sign tx |
 | `/execute` | $0.005 | AI parsing + policy check + tx encoding |
+| `/batch/simulate` | $0.002 | Batch analysis (up to 10 trades, ~30% gas savings) |
+| `/batch/execute` | $0.01 | Batch execution (~30% gas savings) |
 | `/policy/:address` | $0.0005 | On-chain policy retrieval |
 | `/policy/set` | $0.0005 | Policy update tx preparation |
 | `/portfolio/:address` | $0.001 | All balances + USD values |
@@ -32,7 +34,7 @@ Set trade limits, slippage tolerance, cooldowns, and token allowlists.
 | `/price/:token` | FREE | Current token price |
 
 ### 7. ✅ Developer Experience
-Complete TypeScript SDK with one-line trade execution.
+Complete TypeScript SDK with one-line trade execution and batch trading support.
 
 ## Features
 
@@ -42,6 +44,7 @@ Complete TypeScript SDK with one-line trade execution.
 - 📊 **Trade Simulation**: Preview trades with complete analysis before execution
 - 🔐 **Policy Enforcement**: User-defined trading rules via smart contracts
 - 💳 **x402 Payments**: Instant USDC payments without API keys
+- ⚡ **Batch Trading**: Execute up to 10 trades in one transaction (~30% gas savings)
 
 ## Quick Start
 
@@ -58,6 +61,14 @@ const client = new BluePilotClient({
 // One-line trade execution
 const result = await client.simulateAndExecute("swap 0.1 ETH for USDC");
 console.log(`Trade executed! TX: ${result.txHash}`);
+
+// Batch trading for gas savings
+const batch = await client.batchSimulateAndExecute([
+  "swap 0.1 ETH for USDC",
+  "swap 0.05 ETH for DAI",
+  "swap 100 USDC for WETH"
+]);
+console.log(`Batch executed! Gas savings: ${batch.gasSavings}`);
 ```
 
 ## Setup

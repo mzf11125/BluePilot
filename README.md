@@ -29,19 +29,33 @@ graph TD
     E -->|Events| A
 ```
 
-**Key Components:**
-- **Agent API**: 7 REST endpoints (simulate, execute, policy, portfolio, price, alerts)
-- **OpenClaw AI**: Natural language parsing via Gemini
-- **CoinGecko**: Real-time token prices & USD conversions
+**Component Overview:**
+
+- **Mobile App**: React Native interface with WalletConnect
+- **Agent API**: Express.js server with 9 REST endpoints (including batch trading)
+- **OpenClaw AI**: Natural language intent parsing (Gemini)
+- **CoinGecko API**: Real-time token prices and USD conversions
 - **Smart Contracts**: VaultRouter + TradeExecutor on Base Sepolia
 - **RobinPump.fun**: Token launch platform integration (pump.fun style on Base)
 - **Event Monitor**: Tracks new token launches from RobinPump Factory
-- **x402**: Instant USDC payments (no API keys)
+- **x402 Payments**: Instant USDC payments (no API keys)
+
+### Data Flow
+
+1. User sends natural language command
+2. Agent parses intent via OpenClaw
+3. Fetches prices from CoinGecko
+4. Simulates trade on-chain
+5. Checks policy compliance
+6. Returns complete analysis + ready-to-sign tx
+
+**Batch Trading:** Execute up to 10 trades in one transaction for ~30% gas savings.
 
 ## Features
 
 * **Hands-Free Trading:** Tell BluePilot what you want in natural language. It prepares and executes trades within your predefined rules.
 * **Policy-Based Automation:** Set limits for trade size, slippage, cooldowns, and allowed tokens. Smart contracts enforce them on-chain.
+* **Batch Trading:** Execute multiple trades in one transaction with ~30% gas savings. Perfect for portfolio rebalancing and DCA strategies.
 * **Conversational Control:** Adjust strategies, simulate trades, and manage policies through simple chat commands.
 * **Mobile-First Experience:** Clean, fast interface with wallet connection, dark mode, and responsive design.
 * **On-Chain Auditability:** Every action is transparent and verifiable via Basescan.

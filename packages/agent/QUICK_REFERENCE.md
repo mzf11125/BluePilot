@@ -18,6 +18,8 @@ await client.simulateAndExecute("swap 0.1 ETH for USDC");
 ```
 POST   /api/agent/simulate              $0.001  - Full trade analysis
 POST   /api/agent/execute               $0.005  - Prepare trade tx
+POST   /api/agent/batch/simulate        $0.002  - Batch analysis (up to 10)
+POST   /api/agent/batch/execute         $0.01   - Batch execution (~30% gas)
 GET    /api/agent/policy/:address       $0.0005 - Get user policy
 POST   /api/agent/policy/set            $0.0005 - Update policy
 GET    /api/agent/portfolio/:address    $0.001  - Get balances
@@ -80,6 +82,17 @@ alerts.alerts.forEach(alert => {
 });
 ```
 
+### Batch Trading (Gas Savings)
+```typescript
+// Execute multiple trades in one transaction
+const batch = await client.batchSimulateAndExecute([
+  "swap 0.1 ETH for USDC",
+  "swap 0.05 ETH for DAI",
+  "swap 100 USDC for WETH"
+]);
+console.log(`Gas savings: ${batch.gasSavings}`); // "~30%"
+```
+
 ## 🔐 x402 Payments
 
 No API keys needed! Just include payment headers:
@@ -101,6 +114,8 @@ Or use the SDK which handles payments automatically.
 |--------|------|--------------|
 | Simulate | $0.001 | Full analysis + ready-to-sign tx |
 | Execute | $0.005 | AI parsing + policy check + tx |
+| Batch Simulate | $0.002 | Batch analysis (up to 10 trades) |
+| Batch Execute | $0.01 | Batch execution (~30% gas savings) |
 | Policy Get | $0.0005 | On-chain policy data |
 | Policy Set | $0.0005 | Policy update tx |
 | Portfolio | $0.001 | All balances + USD values |

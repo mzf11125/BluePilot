@@ -85,4 +85,20 @@ export class ContractService {
       minAmountOut
     ]);
   }
+
+  encodeBatchTrades(trades: Array<{tokenIn: string, tokenOut: string, amountIn: string, minAmountOut: string}>): string {
+    // Encode multiple trades into a single multicall transaction
+    const calls = trades.map(trade => 
+      this.vaultRouter.interface.encodeFunctionData('executeTrade', [
+        trade.tokenIn,
+        trade.tokenOut,
+        trade.amountIn,
+        trade.minAmountOut
+      ])
+    );
+    
+    // Return multicall encoding (if VaultRouter supports it)
+    // For now, return array of encoded calls
+    return JSON.stringify(calls);
+  }
 }

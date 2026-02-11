@@ -66,6 +66,52 @@ export class BluePilotClient {
     return response.data;
   }
 
+  async batchSimulate(commands: string[], userAddress?: string) {
+    const response = await this.client.post('/batch/simulate', { commands, userAddress });
+    return response.data;
+  }
+
+  async batchExecute(commands: string[], userAddress: string) {
+    const response = await this.client.post('/batch/execute', { commands, userAddress });
+    return response.data;
+  }
+
+  async batchSimulateAndExecute(commands: string[]) {
+    if (!this.wallet) {
+      throw new Error('Wallet required for batchSimulateAndExecute');
+    }
+
+    const userAddress = this.wallet.address;
+    const batchResult = await this.batchSimulate(commands, userAddress);
+
+    if (batchResult.trades.some((t: any) => !t.policy.compliant)) {
+      const violations = batchResult.trades
+        .filter((t: any) => !t.policy.compliant)
+        .flatMap((t: any) => t.policy.violations);
+      throw new Error(`Policy violations: ${violations.join(', ')}`);
+    }
+
+    const execResult = await this.batchExecute(commands, userAddress);
+
+    const provider = new ethers.JsonRpcProvider(process.env.BASE_SEPOLIA_RPC);
+    const signer = this.wallet.connect(provider);
+
+    const tx = await signer.sendTransaction({
+      to: execResult.transaction.to,
+      data: execResult.transaction.data,
+      value: execResult.transaction.value
+    });
+
+    const receipt = await tx.wait();
+
+    return {
+      ...batchResult,
+      txHash: receipt?.hash,
+      blockNumber: receipt?.blockNumber,
+      gasSavings: execResult.gasSavings
+    };
+  }
+
   async simulateAndExecute(command: string) {
     if (!this.wallet) {
       throw new Error('Wallet required for simulateAndExecute');

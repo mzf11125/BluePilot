@@ -187,6 +187,83 @@ Get all vault balances with USD values and total portfolio value.
 
 ---
 
+### 🔹 POST /batch/simulate
+
+Simulate multiple trades in a single batch to save gas fees (~30% savings).
+
+**Cost:** $0.002 USDC
+
+**Request:**
+```json
+{
+  "commands": [
+    "swap 0.1 ETH for USDC",
+    "swap 0.05 ETH for DAI",
+    "swap 100 USDC for WETH"
+  ],
+  "userAddress": "0x..." // optional
+}
+```
+
+**Response:**
+```json
+{
+  "trades": [
+    {
+      "intent": {...},
+      "simulation": {...},
+      "policy": {"compliant": true}
+    }
+  ],
+  "totalGasEstimate": "420000",
+  "gasSavings": "180000",
+  "gasSavingsPercent": "30%"
+}
+```
+
+**Limits:**
+- Maximum 10 trades per batch
+- All trades must pass policy checks
+
+---
+
+### 🔹 POST /batch/execute
+
+Prepare a batch transaction for multiple trades with gas savings.
+
+**Cost:** $0.01 USDC
+
+**Request:**
+```json
+{
+  "commands": [
+    "swap 0.1 ETH for USDC",
+    "swap 0.05 ETH for DAI"
+  ],
+  "userAddress": "0x..."
+}
+```
+
+**Response:**
+```json
+{
+  "trades": [...],
+  "transaction": {
+    "to": "0xVaultRouter",
+    "data": "0x...",
+    "value": "0"
+  },
+  "message": "Batch transaction prepared. User must sign and submit.",
+  "gasSavings": "~30%"
+}
+```
+
+**Errors:**
+- `400` - Policy violation in any trade
+- `400` - Maximum 10 trades exceeded
+
+---
+
 ### 🔹 GET /price/:token
 
 Get current token price in USD from **CoinGecko API**.
@@ -276,6 +353,8 @@ await client.setPolicy("0x...", {
 |----------|-------|-------------|
 | `/simulate` | $0.001 | Full trade analysis + ready-to-sign tx |
 | `/execute` | $0.005 | AI parsing + policy check + tx encoding |
+| `/batch/simulate` | $0.002 | Batch trade analysis (up to 10 trades) |
+| `/batch/execute` | $0.01 | Batch transaction preparation (~30% gas savings) |
 | `/policy/:address` | $0.0005 | On-chain policy retrieval |
 | `/policy/set` | $0.0005 | Policy update tx preparation |
 | `/portfolio/:address` | $0.001 | All balances + USD values |

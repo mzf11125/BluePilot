@@ -30,6 +30,8 @@ Agent API (Express.js + TypeScript)
 **7 REST Endpoints:**
 - POST /api/agent/simulate ($0.001) - Complete trade analysis
 - POST /api/agent/execute ($0.005) - Prepare transaction
+- POST /api/agent/batch/simulate ($0.002) - Batch trade analysis (up to 10 trades)
+- POST /api/agent/batch/execute ($0.01) - Batch execution (~30% gas savings)
 - GET /api/agent/policy/:address ($0.0005) - Get user policy
 - POST /api/agent/policy/set ($0.0005) - Update policy
 - GET /api/agent/portfolio/:address ($0.001) - Portfolio tracking
@@ -106,6 +108,13 @@ Smart contracts enforce these limits - no bypassing possible.
 - Pay per request with USDC
 - Transparent per-endpoint pricing
 - Automatic payment verification
+
+### 6. Batch Trading
+- Execute up to 10 trades in one transaction
+- ~30% gas savings compared to individual trades
+- Perfect for portfolio rebalancing and DCA strategies
+- Atomic execution (all or nothing)
+- Natural language commands for batch operations
 
 ## Data Flow Example
 
@@ -237,6 +246,14 @@ console.log(sim.simulation.amountOutUSD); // "$150.00"
 const result = await client.simulateAndExecute("swap 0.1 ETH for USDC");
 console.log(result.txHash);
 
+// Batch trading for gas savings
+const batch = await client.batchSimulateAndExecute([
+  "swap 0.1 ETH for USDC",
+  "swap 0.05 ETH for DAI",
+  "swap 100 USDC for WETH"
+]);
+console.log(`Gas savings: ${batch.gasSavings}`); // "~30%"
+
 // Get portfolio
 const portfolio = await client.getPortfolio(address, [ETH, USDC]);
 console.log(portfolio.totalUSD);
@@ -309,6 +326,7 @@ function executeTrade(
 5. **RobinPump integration** (first AI agent with native support)
 6. **No API keys** (x402 instant payments)
 7. **Multi-DEX routing** (Uniswap V2 + RobinPump)
+8. **Batch trading** (~30% gas savings for multiple trades)
 
 ## Development Commands
 

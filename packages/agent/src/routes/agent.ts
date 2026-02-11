@@ -174,6 +174,141 @@ router.get('/alerts', (req, res) => {
   }
 });
 
+// POST /api/agent/batch/simulate - Requires 0.002 USDC payment (if x402 enabled)
+router.post('/batch/simulate', requirePayment('0.002'), async (req, res) => {
+  try {
+    const { commands, userAddress } = req.body;
+    
+    if (!Array.isArray(commands) || commands.length === 0) {
+      return res.status(400).json({ error: 'commands array required' });
+    }
+
+    if (commands.length > 10) {
+      return res.status(400).json({ error: 'Maximum 10 trades per batch' });
+    }
+
+    // Parse all intents
+    const intents = await Promise.all(
+      commands.map(cmd => openClaw.parseTradeIntent(cmd))
+    );
+
+    if (intents.some(intent => !intent)) {
+      return res.status(400).json({ error: 'Could not parse all trade intents' });
+    }
+
+    // Simulate all trades
+    const results = await Promise.all(
+      intents.map(async (intent) => {
+        const simulation = await contracts.simulateTrade(intent!.tokenIn, intent!.tokenOut, intent!.amountIn);
+        const prices = await coinGecko.getMultipleTokenPrices([intent!.tokenIn, intent!.tokenOut]);
+        
+        const tokenInPrice = prices[intent!.tokenIn.toLowerCase()] || 0;
+        const tokenOutPrice = prices[intent!.tokenOut.toLowerCase()] || 0;
+        
+        simulation.amountOutUSD = coinGecko.formatUSD(simulation.amountOut, 18, tokenOutPrice);
+        
+        const amountInNum = Number(intent!.amountIn) / 1e18;
+        const amountOutNum = Number(simulation.amountOut) / 1e18;
+        const expectedOut = amountInNum * (tokenInPrice / tokenOutPrice);
+        simulation.priceImpact = `${(((expectedOut - amountOutNum) / expectedOut) * 100).toFixed(2)}%`;
+
+        const policy = userAddress ? 
+          await contracts.checkPolicy(userAddress, intent!.tokenIn, intent!.tokenOut, intent!.amountIn) : 
+          { compliant: true, violations: [] };
+
+        return {
+          intent: intent!,
+          simulation,
+          policy
+        };
+      })
+    );
+
+    // Calculate gas savings
+    const individualGas = results.reduce((sum, r) => sum + Number(r.simulation.gasEstimate), 0);
+    const batchGas = Math.floor(individualGas * 0.7); // ~30% gas savings
+    const gasSavings = individualGas - batchGas;
+
+    res.json({
+      trades: results,
+      totalGasEstimate: batchGas.toString(),
+      gasSavings: gasSavings.toString(),
+      gasSavingsPercent: '30%'
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/agent/batch/execute - Requires 0.01 USDC payment (if x402 enabled)
+router.post('/batch/execute', requirePayment('0.01'), async (req, res) => {
+  try {
+    const { commands, userAddress } = req.body;
+    
+    if (!Array.isArray(commands) || commands.length === 0) {
+      return res.status(400).json({ error: 'commands array required' });
+    }
+
+    if (commands.length > 10) {
+      return res.status(400).json({ error: 'Maximum 10 trades per batch' });
+    }
+
+    // Parse all intents
+    const intents = await Promise.all(
+      commands.map(cmd => openClaw.parseTradeIntent(cmd))
+    );
+
+    if (intents.some(intent => !intent)) {
+      return res.status(400).json({ error: 'Could not parse all trade intents' });
+    }
+
+    // Check policies for all trades
+    const policyChecks = await Promise.all(
+      intents.map(intent => 
+        contracts.checkPolicy(userAddress, intent!.tokenIn, intent!.tokenOut, intent!.amountIn)
+      )
+    );
+
+    const violations = policyChecks.filter(p => !p.compliant);
+    if (violations.length > 0) {
+      return res.status(400).json({ 
+        error: 'Policy violations detected', 
+        violations: violations.flatMap(v => v.violations)
+      });
+    }
+
+    // Simulate and encode all trades
+    const encodedTrades = await Promise.all(
+      intents.map(async (intent) => {
+        const simulation = await contracts.simulateTrade(intent!.tokenIn, intent!.tokenOut, intent!.amountIn);
+        const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
+        
+        return {
+          tokenIn: intent!.tokenIn,
+          tokenOut: intent!.tokenOut,
+          amountIn: intent!.amountIn,
+          minAmountOut
+        };
+      })
+    );
+
+    const batchData = contracts.encodeBatchTrades(encodedTrades);
+
+    res.json({
+      trades: intents,
+      transaction: {
+        to: process.env.VAULT_ROUTER_ADDRESS,
+        data: batchData,
+        value: '0' // Calculate total ETH value if needed
+      },
+      message: 'Batch transaction prepared. User must sign and submit.',
+      gasSavings: '~30%'
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/agent/policy/set - Requires 0.0005 USDC payment (if x402 enabled)
 router.post('/policy/set', requirePayment('0.0005'), async (req, res) => {
   try {

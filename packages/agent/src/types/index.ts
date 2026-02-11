@@ -41,3 +41,17 @@ export interface TokenBalance {
   balance: string;
   usdValue: string;
 }
+
+export interface BatchTradeIntent {
+  trades: TradeIntent[];
+}
+
+export interface BatchSimulationResult {
+  trades: {
+    intent: TradeIntent;
+    simulation: SimulationResult;
+    policy: PolicyCheck;
+  }[];
+  totalGasEstimate: string;
+  gasSavings: string;
+}
