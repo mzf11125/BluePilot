@@ -15,11 +15,23 @@ Powered by secure smart contracts, an AI agent, and a modern mobile app, BluePil
 
 ```mermaid
 graph TD
-	A[Mobile App] -- WalletConnect, Policy, Trade, History --> B[BluePilot Agent]
-	B -- Gateway Protocol --> C[Smart Contracts Base L2]
-	C -- VaultRouter, TradeExecutor, PolicyGuard --> D[DEX Uniswap V2 on Base]
-	C -- Events --> A
+    A[Mobile App] -->|Natural Language| B[Agent API]
+    B -->|OpenClaw AI| C[Intent Parser]
+    B -->|CoinGecko| D[Price Data]
+    B -->|ethers.js| E[Smart Contracts]
+    E -->|VaultRouter| F[Base L2]
+    E -->|TradeExecutor| F
+    F -->|Uniswap V2| G[DEX]
+    B -->|x402| H[USDC Payments]
+    E -->|Events| A
 ```
+
+**Key Components:**
+- **Agent API**: 7 REST endpoints (simulate, execute, policy, portfolio, price, alerts)
+- **OpenClaw AI**: Natural language parsing via Gemini
+- **CoinGecko**: Real-time token prices & USD conversions
+- **Smart Contracts**: VaultRouter + TradeExecutor on Base Sepolia
+- **x402**: Instant USDC payments (no API keys)
 
 ## Features
 
@@ -93,10 +105,10 @@ npm test
 
 ## Smart Contract Addresses
 
-| Contract | Base Mainnet | Base Sepolia |
+| Contract | Base Sepolia | Base Mainnet |
 |----------|--------------|--------------|
-| VaultRouter | TBD | TBD |
-| TradeExecutor | TBD | TBD |
+| VaultRouter | `0xB17C9849ef7d21C7c771128be7Dd852f7D5298a9` | TBD |
+| TradeExecutor | `0x856d02e138f8707cA90346c657A537e8C67475E0` | TBD |
 
 ## Environment Variables
 

@@ -213,29 +213,46 @@ GET /api/agent/alerts
 ## Architecture
 
 ```
-┌─────────────────┐
-│  Mobile/Web UI  │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Agent API     │
-│  (Express.js)   │
-└────────┬────────┘
-         │
-    ┌────┴────┬──────────┬──────────┐
-    ▼         ▼          ▼          ▼
-┌────────┐ ┌──────┐ ┌────────┐ ┌────────┐
-│OpenClaw│ │Coin  │ │Contract│ │Event   │
-│Gateway │ │Gecko │ │Service │ │Monitor │
-└────────┘ └──────┘ └────────┘ └────────┘
-    │                    │          │
-    ▼                    ▼          ▼
-┌────────┐         ┌─────────┐ ┌─────────┐
-│ Gemini │         │  Base   │ │RobinPump│
-│  API   │         │Contracts│ │ Events  │
-└────────┘         └─────────┘ └─────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Mobile/Web UI                        │
+└────────────────────┬────────────────────────────────────┘
+                     │ Natural Language Commands
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              BluePilot Agent API (Express.js)           │
+│  Endpoints: /simulate, /execute, /policy, /portfolio   │
+│             /price, /alerts, /policy/set                │
+└──────┬──────────┬──────────┬──────────┬────────────────┘
+       │          │          │          │
+       ▼          ▼          ▼          ▼
+┌──────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
+│OpenClaw  │ │CoinGecko│ │Contract  │ │Event     │
+│Service   │ │Service  │ │Service   │ │Monitor   │
+└────┬─────┘ └────┬───┘ └────┬─────┘ └────┬─────┘
+     │            │           │             │
+     │            │           │             │
+     ▼            ▼           ▼             ▼
+┌─────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
+│ Gemini  │ │CoinGecko│ │  Base L2 │ │RobinPump │
+│   AI    │ │   API   │ │Contracts │ │  Events  │
+└─────────┘ └─────────┘ └──────────┘ └──────────┘
+                             │
+                             ▼
+                    ┌────────────────┐
+                    │  VaultRouter   │
+                    │ TradeExecutor  │
+                    │  (Base Sepolia)│
+                    └────────────────┘
 ```
+
+### Data Flow
+
+1. **User Request** → Natural language command (e.g., "swap 0.1 ETH for USDC")
+2. **OpenClaw** → Parses intent into structured data
+3. **CoinGecko** → Fetches real-time token prices
+4. **Contract Service** → Simulates trade on-chain
+5. **Policy Check** → Validates against user's limits
+6. **Response** → Complete analysis + ready-to-sign transaction
 
 ## Services
 
@@ -246,15 +263,19 @@ GET /api/agent/alerts
 - Logs to console when new tokens are detected
 
 ### CoinGeckoService
-- Fetches token prices from CoinGecko API
+- Fetches real-time token prices from CoinGecko API
 - Supports single and batch price queries
+- Provides USD formatting helper for conversions
+- Powers /simulate, /portfolio, and /price endpoints
 - Handles rate limiting and errors
 
 ### ContractService
-- Interacts with VaultRouter and TradeExecutor contracts
+- Interacts with VaultRouter and TradeExecutor contracts on Base Sepolia
 - Simulates trades using view functions
+- Checks policy compliance (trade size, cooldown, allowlist)
+- Encodes transactions for user signing
 - Fetches user policies and vault balances
-- Read-only operations (no private keys)
+- Read-only operations (no private keys required)
 
 ### OpenClawService
 - Parses natural language trading commands
