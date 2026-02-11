@@ -1,0 +1,10 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Plane body -->
+  <path d="M60 20 L80 60 L60 55 L40 60 Z" fill="#0EA5E9" stroke="#000" stroke-width="3"/>
+  <!-- Wings -->
+  <path d="M30 50 L60 55 L90 50" stroke="#000" stroke-width="3" fill="#38BDF8"/>
+  <!-- Tail -->
+  <path d="M60 55 L60 80 L50 75 L70 75 Z" fill="#0EA5E9" stroke="#000" stroke-width="3"/>
+  <!-- Window -->
+  <circle cx="60" cy="40" r="5" fill="#FFF" stroke="#000" stroke-width="2"/>
+</svg>

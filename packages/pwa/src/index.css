@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+@layer base {
+  body {
+    @apply bg-brutalism-bg font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .btn-brutal {
+    @apply border-3 border-black shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all;
+  }
+  
+  .card-brutal {
+    @apply border-4 border-black shadow-brutal-lg bg-white;
+  }
+}
