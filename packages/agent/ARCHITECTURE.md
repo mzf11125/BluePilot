@@ -10,6 +10,7 @@ sequenceDiagram
     participant OpenClaw
     participant Contracts
     participant CoinGecko
+    participant RobinPump
     participant Blockchain
 
     User->>SDK: simulateAndExecute("swap 0.1 ETH for USDC")
@@ -38,9 +39,14 @@ sequenceDiagram
     API-->>SDK: Complete analysis + ready-to-sign tx
     
     SDK->>Blockchain: Sign & send transaction
+    Blockchain->>Contracts: Execute via VaultRouter/TradeExecutor
+    Contracts->>RobinPump: Route to RobinPump (if RobinPump token)
+    Contracts->>Blockchain: Or route to Uniswap V2
     Blockchain-->>SDK: Transaction receipt
     
     SDK-->>User: {txHash, amountOut, USD values}
+    
+    Note over API,RobinPump: Event Monitor polls RobinPump Factory<br/>every 15s for new token launches
 ```
 
 ## API Endpoint Architecture
@@ -67,7 +73,13 @@ sequenceDiagram
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
 │  │ /portfolio   │  │   /price     │  │   /alerts    │    │
 │  │   $0.001     │  │    FREE      │  │    FREE      │    │
-│  └──────────────┘  └──────────────┘  └──────────────┘    │
+│  └──────────────┘  └──────────────┘  └──────┬───────┘    │
+│                                              │             │
+│                                              ▼             │
+│                                    ┌──────────────────┐   │
+│                                    │  Event Monitor   │   │
+│                                    │ (RobinPump.fun)  │   │
+│                                    └──────────────────┘   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
                             │

@@ -250,14 +250,24 @@ GET /api/agent/alerts
 1. **User Request** → Natural language command (e.g., "swap 0.1 ETH for USDC")
 2. **OpenClaw** → Parses intent into structured data
 3. **CoinGecko** → Fetches real-time token prices
-4. **Contract Service** → Simulates trade on-chain
+4. **Contract Service** → Simulates trade on-chain (Uniswap V2 or RobinPump)
 5. **Policy Check** → Validates against user's limits
 6. **Response** → Complete analysis + ready-to-sign transaction
+
+### RobinPump.fun Integration
+
+BluePilot integrates with **RobinPump.fun** (pump.fun-style token launch platform on Base):
+
+- **Event Monitor** polls RobinPump Factory every 15 seconds for new token launches
+- Detects `TokenLaunched` events and stores last 100 alerts
+- Powers `/alerts` endpoint for real-time token launch notifications
+- **TradeExecutor** contract supports trading RobinPump tokens via RobinPump Router
+- Users can trade newly launched tokens immediately after detection
 
 ## Services
 
 ### EventMonitor
-- Listens to RobinPump `TokenLaunched` events via WebSocket
+- Polls RobinPump Factory for `TokenLaunched` events every 15 seconds
 - Filters for tracked token address
 - Stores last 100 alerts in memory
 - Logs to console when new tokens are detected

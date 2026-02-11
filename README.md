@@ -22,7 +22,10 @@ graph TD
     E -->|VaultRouter| F[Base L2]
     E -->|TradeExecutor| F
     F -->|Uniswap V2| G[DEX]
-    B -->|x402| H[USDC Payments]
+    F -->|RobinPump Router| H[RobinPump.fun]
+    B -->|x402| I[USDC Payments]
+    B -->|Event Monitor| J[RobinPump Factory]
+    J -->|TokenLaunched Events| B
     E -->|Events| A
 ```
 
@@ -31,6 +34,8 @@ graph TD
 - **OpenClaw AI**: Natural language parsing via Gemini
 - **CoinGecko**: Real-time token prices & USD conversions
 - **Smart Contracts**: VaultRouter + TradeExecutor on Base Sepolia
+- **RobinPump.fun**: Token launch platform integration (pump.fun style on Base)
+- **Event Monitor**: Tracks new token launches from RobinPump Factory
 - **x402**: Instant USDC payments (no API keys)
 
 ## Features
