@@ -74,15 +74,6 @@ pnpm install
 cd packages/contracts && pnpm deploy
 ```
 
-## Security & Audit
-See [SECURITY.md](SECURITY.md) for details on contract security, responsible disclosure, and audit status.
-
-## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-MIT
-
 # Start development server
 npm run dev
 
@@ -129,6 +120,12 @@ cp .env.example .env
 - `BASE_SEPOLIA_RPC_URL` - Base Sepolia RPC
 - `PRIVATE_KEY` - Deployment private key
 - `WALLETCONNECT_PROJECT_ID` - WalletConnect project ID
+
+## Security & Audit
+See [SECURITY.md](SECURITY.md) for details on contract security, responsible disclosure, and audit status.
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
