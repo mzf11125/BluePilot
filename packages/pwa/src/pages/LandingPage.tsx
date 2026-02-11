@@ -23,12 +23,21 @@ export const LandingPage = () => {
           <p className="text-xl md:text-2xl mb-12 max-w-2xl mx-auto text-black">
             Set your rules once—trade automatically and safely within them
           </p>
-          <Button
-            onClick={() => navigate('/app')}
-            className="text-xl px-12 py-6"
-          >
-            Enter App →
-          </Button>
+          <div className="flex gap-4 justify-center">
+            <Button
+              onClick={() => navigate('/app')}
+              className="text-xl px-12 py-6"
+            >
+              Enter App →
+            </Button>
+            <Button
+              onClick={() => navigate('/docs')}
+              variant="secondary"
+              className="text-xl px-12 py-6"
+            >
+              API Docs 📖
+            </Button>
+          </div>
         </div>
 
         {/* Features Grid */}

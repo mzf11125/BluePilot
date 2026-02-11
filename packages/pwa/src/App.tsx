@@ -5,6 +5,7 @@ import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { config } from './lib/wagmi';
 import { AppProvider } from './contexts/AppContext';
 import { LandingPage } from './pages/LandingPage';
+import { DocsPage } from './pages/DocsPage';
 import { AppLayout } from './components/AppLayout';
 import { HomePage } from './pages/HomePage';
 import { TradePage } from './pages/TradePage';
@@ -22,6 +23,7 @@ function App() {
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/docs" element={<DocsPage />} />
                 <Route path="/app" element={<AppLayout />}>
                   <Route index element={<HomePage />} />
                   <Route path="trade" element={<TradePage />} />
