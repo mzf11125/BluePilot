@@ -38,6 +38,7 @@ coverage/
 cache/
 artifacts/
 typechain-types/
+broadcast/
 
 # Misc
 .cache/
