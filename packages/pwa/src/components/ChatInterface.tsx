@@ -1,18 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { parseIntent } from '../lib/intentParser';
-import { simulateTrade } from '../lib/simulation';
+import { mockAgentAPI } from '../lib/mockAgentAPI';
 import { generateMockTxHash } from '../lib/mockData';
 import { Button } from './ui/Button';
-import type { SimulationResult } from '../lib/types';
 
 interface Message {
   id: string;
   role: 'user' | 'ai';
   content: string;
-  simulation?: SimulationResult;
+  simulation?: any;
   action?: () => void;
   actionLabel?: string;
+  batchData?: any;
 }
 
 export const ChatInterface = () => {
@@ -21,7 +20,7 @@ export const ChatInterface = () => {
     {
       id: '0',
       role: 'ai',
-      content: "Hi! I'm BluePilot. Tell me what you'd like to do:\n• Swap tokens (e.g., 'swap 0.5 ETH for USDC')\n• Update policy (e.g., 'set max slippage to 3%')\n• Check history (e.g., 'show my recent trades')",
+      content: "Hi! I'm BluePilot. Tell me what you'd like to do:\n\n💱 Trading:\n• 'swap 0.5 ETH for USDC' - Single trade\n• 'batch: swap 0.1 ETH for USDC, swap 0.05 ETH for DAI' - Batch trade (30% gas savings)\n\n📊 Portfolio:\n• 'show my portfolio' - View all balances\n• 'price of ETH' - Get token price\n\n🚀 RobinPump:\n• 'show new tokens' - Recent token launches\n\n🛡️ Policy:\n• 'show my policy' - View trading limits\n• 'set max slippage to 5%' - Update policy",
     },
   ]);
   const [input, setInput] = useState('');
@@ -39,7 +38,7 @@ export const ChatInterface = () => {
     ]);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || isProcessing) return;
 
     const userMessage = input.trim();
@@ -47,143 +46,257 @@ export const ChatInterface = () => {
     setInput('');
     setIsProcessing(true);
 
-    setTimeout(() => {
-      processIntent(userMessage);
+    try {
+      await processIntent(userMessage);
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
+    } finally {
       setIsProcessing(false);
-    }, 500);
-  };
-
-  const processIntent = (userInput: string) => {
-    const intent = parseIntent(userInput);
-
-    switch (intent.type) {
-      case 'trade':
-        handleTradeIntent(intent.params!);
-        break;
-      case 'policy':
-        handlePolicyIntent(intent.action!, intent.params!);
-        break;
-      case 'query':
-        handleQueryIntent(intent.action!, intent.params);
-        break;
-      default:
-        addMessage(
-          'ai',
-          "I didn't understand that. Try:\n• 'swap 0.5 ETH for USDC'\n• 'set max slippage to 3%'\n• 'show my recent trades'"
-        );
     }
   };
 
-  const handleTradeIntent = (params: any) => {
-    const { amount, fromToken, toToken } = params;
-    const from = tokens.find((t) => t.symbol === fromToken);
-    const to = tokens.find((t) => t.symbol === toToken);
+  const processIntent = async (userInput: string) => {
+    const lower = userInput.toLowerCase();
 
-    if (!from || !to) {
-      addMessage('ai', `Token not found. Available tokens: ${tokens.map((t) => t.symbol).join(', ')}`);
+    // Batch trading
+    if (lower.startsWith('batch:')) {
+      await handleBatchTrade(userInput);
       return;
     }
 
-    const simulation = simulateTrade(from, to, parseFloat(amount), policy);
-
-    if (simulation.policyViolations.length > 0) {
-      addMessage(
-        'ai',
-        `⚠️ Cannot execute trade:\n${simulation.policyViolations.map((v) => `• ${v}`).join('\n')}`
-      );
+    // Single trade
+    if (lower.includes('swap')) {
+      await handleTrade(userInput);
       return;
     }
 
-    const executeAction = () => {
-      const txHash = generateMockTxHash();
-      addTransaction({
-        hash: txHash,
-        from: fromToken,
-        to: toToken,
-        fromAmount: amount,
-        toAmount: simulation.outputAmount,
-        timestamp: Date.now(),
-        status: 'pending',
-      });
+    // Portfolio
+    if (lower.includes('portfolio') || lower.includes('balance')) {
+      await handlePortfolio();
+      return;
+    }
 
-      addMessage('ai', `✓ Trade submitted! Transaction: ${txHash.slice(0, 10)}...`);
+    // Token price
+    if (lower.includes('price of') || lower.includes('price for')) {
+      await handlePrice(userInput);
+      return;
+    }
 
-      setTimeout(() => {
-        updateTransaction(txHash, { status: 'confirmed' });
-        addMessage('ai', '✓ Trade confirmed!');
-      }, 2500);
-    };
+    // Alerts
+    if (lower.includes('alert') || lower.includes('new token') || lower.includes('launch')) {
+      await handleAlerts();
+      return;
+    }
+
+    // Policy update
+    if (lower.includes('set') && (lower.includes('slippage') || lower.includes('limit') || lower.includes('cooldown'))) {
+      await handlePolicyUpdate(userInput);
+      return;
+    }
+
+    // Policy view
+    if (lower.includes('policy') || lower.includes('show') && lower.includes('limit')) {
+      await handlePolicy(userInput);
+      return;
+    }
 
     addMessage(
       'ai',
-      `Simulation complete:\n• Output: ${simulation.outputAmount} ${toToken}\n• Slippage: ${simulation.slippage}%\n• Gas: ${simulation.gasEstimate} ETH`,
-      {
-        simulation,
-        action: executeAction,
-        actionLabel: 'Execute Trade',
-      }
+      "I didn't understand that. Try:\n• 'swap 0.5 ETH for USDC'\n• 'batch: swap 0.1 ETH for USDC, swap 0.05 ETH for DAI'\n• 'show my portfolio'\n• 'price of ETH'\n• 'show new tokens'\n• 'show my policy'"
     );
   };
 
-  const handlePolicyIntent = (action: string, params: any) => {
-    switch (action) {
-      case 'update_slippage':
-        updatePolicy({ ...policy, maxSlippage: params.maxSlippage });
-        addMessage('ai', `✓ Max slippage updated to ${params.maxSlippage}%`);
-        break;
-      case 'update_trade_size':
-        updatePolicy({ ...policy, maxTradeSize: params.maxTradeSize });
-        addMessage('ai', `✓ Max trade size updated to ${params.maxTradeSize} ETH`);
-        break;
-      case 'update_cooldown':
-        updatePolicy({ ...policy, cooldown: params.cooldown });
-        addMessage('ai', `✓ Cooldown updated to ${params.cooldown} minutes`);
-        break;
+  const handleTrade = async (command: string) => {
+    try {
+      const simulation = await mockAgentAPI.simulate(command);
+      
+      const message = `✅ Trade Simulation:\n\n` +
+        `📊 ${simulation.intent.amountIn} ${simulation.intent.tokenIn} → ${simulation.simulation.amountOut} ${simulation.intent.tokenOut}\n` +
+        `💵 Value: ${simulation.simulation.amountOutUSD}\n` +
+        `📉 Price Impact: ${simulation.simulation.priceImpact}\n` +
+        `⛽ Gas: ${simulation.simulation.gasEstimate}\n` +
+        `🔀 Route: ${simulation.simulation.route.join(' → ')}\n` +
+        `🏪 DEX: ${simulation.simulation.bestDex}\n\n` +
+        `${simulation.policy.compliant ? '✅ Policy compliant' : '⚠️ Policy violations'}`;
+
+      const executeAction = async () => {
+        const txHash = generateMockTxHash();
+        addTransaction({
+          hash: txHash,
+          from: simulation.intent.tokenIn,
+          to: simulation.intent.tokenOut,
+          fromAmount: simulation.intent.amountIn,
+          toAmount: simulation.simulation.amountOut,
+          timestamp: Date.now(),
+          status: 'pending'
+        });
+
+        addMessage('ai', `🚀 Trade submitted!\n\nTransaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}\n\nWaiting for confirmation...`);
+
+        setTimeout(() => {
+          updateTransaction(txHash, { status: 'confirmed' });
+          addMessage('ai', `✅ Trade confirmed!\n\nYou received ${simulation.simulation.amountOut} ${simulation.intent.tokenOut}`);
+        }, 3000);
+      };
+
+      addMessage('ai', message, {
+        simulation,
+        action: executeAction,
+        actionLabel: '🚀 Execute Trade'
+      });
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
     }
   };
 
-  const handleQueryIntent = (action: string, params?: any) => {
-    switch (action) {
-      case 'show_history':
-        if (transactions.length === 0) {
-          addMessage('ai', 'No transactions yet.');
-        } else {
-          const recent = transactions.slice(-5).reverse();
-          const list = recent
-            .map(
-              (tx) =>
-                `• ${tx.from} → ${tx.to} (${tx.fromAmount} → ${tx.toAmount}) - ${tx.status}`
-            )
-            .join('\n');
-          addMessage('ai', `Recent trades:\n${list}`);
-        }
-        break;
-      case 'show_policy':
-        addMessage(
-          'ai',
-          `Current policy:\n• Max Slippage: ${policy.maxSlippage}%\n• Max Trade Size: ${policy.maxTradeSize} ETH\n• Cooldown: ${policy.cooldown} min\n• Allowed Tokens: ${policy.allowedTokens.join(', ')}`
-        );
-        break;
-      case 'show_balance':
-        const balances = tokens.map((t) => `• ${t.symbol}: ${t.balance}`).join('\n');
-        addMessage('ai', `Your balances:\n${balances}`);
-        break;
-      case 'show_transaction':
-        const tx = transactions.find((t) => t.hash === params.hash);
-        if (tx) {
-          addMessage(
-            'ai',
-            `Transaction ${tx.hash}:\n• ${tx.from} → ${tx.to}\n• Amount: ${tx.fromAmount} → ${tx.toAmount}\n• Status: ${tx.status}`
-          );
-        } else {
-          addMessage('ai', 'Transaction not found.');
-        }
-        break;
+  const handleBatchTrade = async (input: string) => {
+    try {
+      const commandsStr = input.replace(/^batch:\s*/i, '');
+      const commands = commandsStr.split(',').map(c => c.trim());
+
+      if (commands.length > 10) {
+        addMessage('ai', '❌ Maximum 10 trades per batch');
+        return;
+      }
+
+      const batchSim = await mockAgentAPI.batchSimulate(commands);
+
+      const message = `✅ Batch Trade Simulation (${commands.length} trades):\n\n` +
+        batchSim.trades.map((trade, i) => 
+          `${i + 1}. ${trade.intent.amountIn} ${trade.intent.tokenIn} → ${trade.simulation.amountOut} ${trade.intent.tokenOut}`
+        ).join('\n') +
+        `\n\n⛽ Total Gas: ${batchSim.totalGasEstimate}\n` +
+        `💰 Gas Savings: ${batchSim.gasSavingsPercent} (${batchSim.gasSavings} gas)\n` +
+        `✅ All trades policy compliant`;
+
+      const executeAction = async () => {
+        const txHash = generateMockTxHash();
+        addMessage('ai', `🚀 Batch trade submitted!\n\nTransaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}\n\nExecuting ${commands.length} trades...`);
+
+        setTimeout(() => {
+          addMessage('ai', `✅ Batch trade confirmed!\n\nAll ${commands.length} trades executed successfully with 30% gas savings!`);
+        }, 3000);
+      };
+
+      addMessage('ai', message, {
+        batchData: batchSim,
+        action: executeAction,
+        actionLabel: `🚀 Execute Batch (${commands.length} trades)`
+      });
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
+    }
+  };
+
+  const handlePortfolio = async () => {
+    try {
+      const tokenSymbols = tokens.map(t => t.symbol);
+      const portfolio = await mockAgentAPI.getPortfolio('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', tokenSymbols);
+
+      const message = `💼 Your Portfolio:\n\n` +
+        portfolio.portfolio.map(item => 
+          `${item.symbol}: ${item.balance} (${item.usdValue})`
+        ).join('\n') +
+        `\n\n💰 Total Value: ${portfolio.totalUSD}`;
+
+      addMessage('ai', message);
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
+    }
+  };
+
+  const handleAlerts = async () => {
+    try {
+      const alerts = await mockAgentAPI.getAlerts();
+
+      if (alerts.count === 0) {
+        addMessage('ai', '📢 No new token launches detected');
+        return;
+      }
+
+      const message = `🚀 New Token Launches (${alerts.count}):\n\n` +
+        alerts.alerts.map(alert => 
+          `• ${alert.name} (${alert.symbol})\n  Address: ${alert.token.slice(0, 10)}...${alert.token.slice(-8)}\n  Creator: ${alert.creator.slice(0, 10)}...${alert.creator.slice(-8)}`
+        ).join('\n\n');
+
+      addMessage('ai', message);
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
+    }
+  };
+
+  const handlePolicy = async (input: string) => {
+    try {
+      const policyData = await mockAgentAPI.getPolicy('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb');
+
+      const message = `🛡️ Your Trading Policy:\n\n` +
+        `• Max Slippage: ${policyData.maxSlippageBps / 100}%\n` +
+        `• Max Trade Size: ${parseFloat(policyData.maxTradeSize) / 1e18} ETH\n` +
+        `• Cooldown: ${policyData.cooldownSeconds}s\n` +
+        `• Token Allowlist: ${policyData.tokenAllowlist.length === 0 ? 'All tokens allowed' : policyData.tokenAllowlist.join(', ')}`;
+
+      addMessage('ai', message);
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
+    }
+  };
+
+  const handlePrice = async (input: string) => {
+    try {
+      // Extract token from "price of ETH" or "price for USDC"
+      const match = input.match(/price\s+(?:of|for)\s+(\w+)/i);
+      if (!match) {
+        addMessage('ai', '❌ Please specify a token. Example: "price of ETH"');
+        return;
+      }
+
+      const token = match[1].toUpperCase();
+      const priceData = await mockAgentAPI.getPrice(token);
+
+      addMessage('ai', `💰 ${token} Price: $${priceData.price.toLocaleString()}`);
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
+    }
+  };
+
+  const handlePolicyUpdate = async (input: string) => {
+    try {
+      // Parse policy update command
+      const slippageMatch = input.match(/slippage\s+to\s+([\d.]+)%?/i);
+      const tradeSizeMatch = input.match(/trade\s+size\s+to\s+([\d.]+)/i);
+      const cooldownMatch = input.match(/cooldown\s+to\s+(\d+)/i);
+
+      const updates: any = {};
+      if (slippageMatch) {
+        updates.maxSlippageBps = Math.floor(parseFloat(slippageMatch[1]) * 100);
+      }
+      if (tradeSizeMatch) {
+        updates.maxTradeSize = (parseFloat(tradeSizeMatch[1]) * 1e18).toString();
+      }
+      if (cooldownMatch) {
+        updates.cooldownSeconds = parseInt(cooldownMatch[1]);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        addMessage('ai', '❌ Could not parse policy update. Try:\n• "set max slippage to 5%"\n• "set max trade size to 2"\n• "set cooldown to 30"');
+        return;
+      }
+
+      await mockAgentAPI.setPolicy('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', updates);
+
+      const updateMessages = [];
+      if (updates.maxSlippageBps) updateMessages.push(`Max Slippage: ${updates.maxSlippageBps / 100}%`);
+      if (updates.maxTradeSize) updateMessages.push(`Max Trade Size: ${parseFloat(updates.maxTradeSize) / 1e18} ETH`);
+      if (updates.cooldownSeconds) updateMessages.push(`Cooldown: ${updates.cooldownSeconds}s`);
+
+      addMessage('ai', `✅ Policy Updated:\n\n${updateMessages.map(m => `• ${m}`).join('\n')}\n\nTransaction ready to sign.`);
+    } catch (error: any) {
+      addMessage('ai', `❌ Error: ${error.message}`);
     }
   };
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 16rem)' }}>
+    <div className="flex flex-col h-full bg-gray-50">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
