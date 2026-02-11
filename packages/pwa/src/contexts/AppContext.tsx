@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { Token, Policy, Transaction } from '../lib/types';
 import { MOCK_TOKENS, DEFAULT_POLICY, MOCK_TRANSACTIONS } from '../lib/mockData';
 
