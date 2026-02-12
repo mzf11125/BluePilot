@@ -1,8 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { WagmiProvider } from 'wagmi';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { config } from './lib/wagmi';
+import { Providers } from './components/Providers';
 import { AppProvider } from './contexts/AppContext';
 import { LandingPage } from './pages/LandingPage';
 import { DocsPage } from './pages/DocsPage';
@@ -13,32 +10,26 @@ import { StrategyPage } from './pages/StrategyPage';
 import { PolicyPage } from './pages/PolicyPage';
 import { HistoryPage } from './pages/HistoryPage';
 
-const queryClient = new QueryClient();
-
 function App() {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          <AppProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/docs" element={<DocsPage />} />
-                <Route path="/app" element={<AppLayout />}>
-                  <Route index element={<HomePage />} />
-                  <Route path="trade" element={<TradePage />} />
-                  <Route path="strategy" element={<StrategyPage />} />
-                  <Route path="policy" element={<PolicyPage />} />
-                  <Route path="history" element={<HistoryPage />} />
-                </Route>
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </BrowserRouter>
-          </AppProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <Providers>
+      <AppProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/app" element={<AppLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="trade" element={<TradePage />} />
+              <Route path="strategy" element={<StrategyPage />} />
+              <Route path="policy" element={<PolicyPage />} />
+              <Route path="history" element={<HistoryPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AppProvider>
+    </Providers>
   );
 }
 

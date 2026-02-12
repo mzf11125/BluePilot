@@ -1,9 +1,10 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { EventMonitor } from '../services/EventMonitor';
 import { CoinGeckoService } from '../services/CoinGeckoService';
 import { ContractService } from '../services/ContractService';
 import { OpenClawService } from '../services/OpenClawService';
 import { X402Middleware } from '../services/X402Middleware';
+import { errorHandler, Errors, asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
@@ -70,308 +71,284 @@ const requirePayment = (amount?: string) => {
 };
 
 // POST /api/agent/simulate - Requires 0.001 USDC payment (if x402 enabled)
-router.post('/simulate', requirePayment('0.001'), async (req, res) => {
-  try {
-    const { command, userAddress } = req.body;
-    
-    const intent = await openClaw.parseTradeIntent(command);
-    if (!intent) {
-      return res.status(400).json({ error: 'Could not parse trade intent' });
-    }
+router.post('/simulate', requirePayment('0.001'), asyncHandler(async (req: Request, res: Response) => {
+  const { command, userAddress } = req.body;
 
-    const simulation = await contracts.simulateTrade(intent.tokenIn, intent.tokenOut, intent.amountIn);
-    const prices = await coinGecko.getMultipleTokenPrices([intent.tokenIn, intent.tokenOut]);
-    
-    const tokenInPrice = prices[intent.tokenIn.toLowerCase()] || 0;
-    const tokenOutPrice = prices[intent.tokenOut.toLowerCase()] || 0;
-    
-    simulation.amountOutUSD = coinGecko.formatUSD(simulation.amountOut, 18, tokenOutPrice);
-    
-    const amountInNum = Number(intent.amountIn) / 1e18;
-    const amountOutNum = Number(simulation.amountOut) / 1e18;
-    const expectedOut = amountInNum * (tokenInPrice / tokenOutPrice);
-    simulation.priceImpact = `${(((expectedOut - amountOutNum) / expectedOut) * 100).toFixed(2)}%`;
-
-    const policy = userAddress ? await contracts.checkPolicy(userAddress, intent.tokenIn, intent.tokenOut, intent.amountIn) : { compliant: true, violations: [] };
-
-    const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
-
-    res.json({
-      intent,
-      simulation,
-      prices: { [intent.tokenIn]: tokenInPrice, [intent.tokenOut]: tokenOutPrice },
-      policy,
-      readyToSign: {
-        to: process.env.VAULT_ROUTER_ADDRESS,
-        data: contracts.encodeExecuteTrade(intent.tokenIn, intent.tokenOut, intent.amountIn, minAmountOut),
-        value: intent.tokenIn === '0x0000000000000000000000000000000000000000' ? intent.amountIn : '0'
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  if (!command) {
+    throw Errors.badRequest('command is required');
   }
-});
+
+  const intent = await openClaw.parseTradeIntent(command);
+  if (!intent) {
+    throw Errors.badRequest('Could not parse trade intent');
+  }
+
+  const simulation = await contracts.simulateTrade(intent.tokenIn, intent.tokenOut, intent.amountIn);
+  const prices = await coinGecko.getMultipleTokenPrices([intent.tokenIn, intent.tokenOut]);
+
+  const tokenInPrice = prices[intent.tokenIn.toLowerCase()] || 0;
+  const tokenOutPrice = prices[intent.tokenOut.toLowerCase()] || 0;
+
+  simulation.amountOutUSD = coinGecko.formatUSD(simulation.amountOut, 18, tokenOutPrice);
+
+  const amountInNum = Number(intent.amountIn) / 1e18;
+  const amountOutNum = Number(simulation.amountOut) / 1e18;
+  const expectedOut = amountInNum * (tokenInPrice / tokenOutPrice);
+  simulation.priceImpact = `${(((expectedOut - amountOutNum) / expectedOut) * 100).toFixed(2)}%`;
+
+  const policy = userAddress ? await contracts.checkPolicy(userAddress, intent.tokenIn, intent.tokenOut, intent.amountIn) : { compliant: true, violations: [] };
+
+  const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
+
+  res.json({
+    intent,
+    simulation,
+    prices: { [intent.tokenIn]: tokenInPrice, [intent.tokenOut]: tokenOutPrice },
+    policy,
+    readyToSign: {
+      to: process.env.VAULT_ROUTER_ADDRESS,
+      data: contracts.encodeExecuteTrade(intent.tokenIn, intent.tokenOut, intent.amountIn, minAmountOut),
+      value: intent.tokenIn === '0x0000000000000000000000000000000000000000' ? intent.amountIn : '0'
+    }
+  });
+}));
 
 // POST /api/agent/execute - Requires 0.005 USDC payment (if x402 enabled)
-router.post('/execute', requirePayment('0.005'), async (req, res) => {
-  try {
-    const { command, userAddress } = req.body;
-    
-    const intent = await openClaw.parseTradeIntent(command);
-    if (!intent) {
-      return res.status(400).json({ error: 'Could not parse trade intent' });
-    }
+router.post('/execute', requirePayment('0.005'), asyncHandler(async (req: Request, res: Response) => {
+  const { command, userAddress } = req.body;
 
-    const policy = await contracts.checkPolicy(userAddress, intent.tokenIn, intent.tokenOut, intent.amountIn);
-    if (!policy.compliant) {
-      return res.status(400).json({ error: 'Policy violation', violations: policy.violations });
-    }
-
-    const simulation = await contracts.simulateTrade(intent.tokenIn, intent.tokenOut, intent.amountIn);
-    const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
-
-    res.json({
-      intent,
-      transaction: {
-        to: process.env.VAULT_ROUTER_ADDRESS,
-        data: contracts.encodeExecuteTrade(intent.tokenIn, intent.tokenOut, intent.amountIn, minAmountOut),
-        value: intent.tokenIn === '0x0000000000000000000000000000000000000000' ? intent.amountIn : '0'
-      },
-      message: 'Transaction prepared. User must sign and submit.'
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  if (!command) {
+    throw Errors.badRequest('command is required');
   }
-});
+
+  const intent = await openClaw.parseTradeIntent(command);
+  if (!intent) {
+    throw Errors.badRequest('Could not parse trade intent');
+  }
+
+  const policy = await contracts.checkPolicy(userAddress, intent.tokenIn, intent.tokenOut, intent.amountIn);
+  if (!policy.compliant) {
+    throw Errors.policyViolation(policy.violations);
+  }
+
+  const simulation = await contracts.simulateTrade(intent.tokenIn, intent.tokenOut, intent.amountIn);
+  const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
+
+  res.json({
+    intent,
+    transaction: {
+      to: process.env.VAULT_ROUTER_ADDRESS,
+      data: contracts.encodeExecuteTrade(intent.tokenIn, intent.tokenOut, intent.amountIn, minAmountOut),
+      value: intent.tokenIn === '0x0000000000000000000000000000000000000000' ? intent.amountIn : '0'
+    },
+    message: 'Transaction prepared. User must sign and submit.'
+  });
+}));
 
 // GET /api/agent/policy/:address - Requires 0.0005 USDC payment (if x402 enabled)
-router.get('/policy/:address', requirePayment('0.0005'), async (req, res) => {
-  try {
-    const policy = await contracts.getUserPolicy(req.params.address);
-    res.json(policy);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get('/policy/:address', requirePayment('0.0005'), asyncHandler(async (req: Request, res: Response) => {
+  const policy = await contracts.getUserPolicy(req.params.address);
+  res.json(policy);
+}));
 
 // GET /api/agent/price/:token - Free endpoint
-router.get('/price/:token', async (req, res) => {
-  try {
-    const price = await coinGecko.getTokenPrice(req.params.token);
-    res.json({ token: req.params.token, price });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get('/price/:token', asyncHandler(async (req: Request, res: Response) => {
+  const price = await coinGecko.getTokenPrice(req.params.token);
+  res.json({ token: req.params.token, price });
+}));
 
 // GET /api/agent/alerts - Free endpoint
-router.get('/alerts', (req, res) => {
+router.get('/alerts', (req: Request, res: Response) => {
   try {
     const alerts = eventMonitor.getAlerts();
     res.json({ alerts, count: alerts.length });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    throw Errors.internal(error.message);
   }
 });
 
 // POST /api/agent/batch/simulate - Requires 0.002 USDC payment (if x402 enabled)
-router.post('/batch/simulate', requirePayment('0.002'), async (req, res) => {
-  try {
-    const { commands, userAddress } = req.body;
-    
-    if (!Array.isArray(commands) || commands.length === 0) {
-      return res.status(400).json({ error: 'commands array required' });
-    }
+router.post('/batch/simulate', requirePayment('0.002'), asyncHandler(async (req: Request, res: Response) => {
+  const { commands, userAddress } = req.body;
 
-    if (commands.length > 10) {
-      return res.status(400).json({ error: 'Maximum 10 trades per batch' });
-    }
-
-    // Parse all intents
-    const intents = await Promise.all(
-      commands.map(cmd => openClaw.parseTradeIntent(cmd))
-    );
-
-    if (intents.some(intent => !intent)) {
-      return res.status(400).json({ error: 'Could not parse all trade intents' });
-    }
-
-    // Simulate all trades
-    const results = await Promise.all(
-      intents.map(async (intent) => {
-        const simulation = await contracts.simulateTrade(intent!.tokenIn, intent!.tokenOut, intent!.amountIn);
-        const prices = await coinGecko.getMultipleTokenPrices([intent!.tokenIn, intent!.tokenOut]);
-        
-        const tokenInPrice = prices[intent!.tokenIn.toLowerCase()] || 0;
-        const tokenOutPrice = prices[intent!.tokenOut.toLowerCase()] || 0;
-        
-        simulation.amountOutUSD = coinGecko.formatUSD(simulation.amountOut, 18, tokenOutPrice);
-        
-        const amountInNum = Number(intent!.amountIn) / 1e18;
-        const amountOutNum = Number(simulation.amountOut) / 1e18;
-        const expectedOut = amountInNum * (tokenInPrice / tokenOutPrice);
-        simulation.priceImpact = `${(((expectedOut - amountOutNum) / expectedOut) * 100).toFixed(2)}%`;
-
-        const policy = userAddress ? 
-          await contracts.checkPolicy(userAddress, intent!.tokenIn, intent!.tokenOut, intent!.amountIn) : 
-          { compliant: true, violations: [] };
-
-        return {
-          intent: intent!,
-          simulation,
-          policy
-        };
-      })
-    );
-
-    // Calculate gas savings
-    const individualGas = results.reduce((sum, r) => sum + Number(r.simulation.gasEstimate), 0);
-    const batchGas = Math.floor(individualGas * 0.7); // ~30% gas savings
-    const gasSavings = individualGas - batchGas;
-
-    res.json({
-      trades: results,
-      totalGasEstimate: batchGas.toString(),
-      gasSavings: gasSavings.toString(),
-      gasSavingsPercent: '30%'
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  if (!Array.isArray(commands) || commands.length === 0) {
+    throw Errors.badRequest('commands array required');
   }
-});
+
+  if (commands.length > 10) {
+    throw Errors.badRequest('Maximum 10 trades per batch');
+  }
+
+  // Parse all intents
+  const intents = await Promise.all(
+    commands.map(cmd => openClaw.parseTradeIntent(cmd))
+  );
+
+  if (intents.some(intent => !intent)) {
+    throw Errors.badRequest('Could not parse all trade intents');
+  }
+
+  // Simulate all trades
+  const results = await Promise.all(
+    intents.map(async (intent) => {
+      const simulation = await contracts.simulateTrade(intent!.tokenIn, intent!.tokenOut, intent!.amountIn);
+      const prices = await coinGecko.getMultipleTokenPrices([intent!.tokenIn, intent!.tokenOut]);
+
+      const tokenInPrice = prices[intent!.tokenIn.toLowerCase()] || 0;
+      const tokenOutPrice = prices[intent!.tokenOut.toLowerCase()] || 0;
+
+      simulation.amountOutUSD = coinGecko.formatUSD(simulation.amountOut, 18, tokenOutPrice);
+
+      const amountInNum = Number(intent!.amountIn) / 1e18;
+      const amountOutNum = Number(simulation.amountOut) / 1e18;
+      const expectedOut = amountInNum * (tokenInPrice / tokenOutPrice);
+      simulation.priceImpact = `${(((expectedOut - amountOutNum) / expectedOut) * 100).toFixed(2)}%`;
+
+      const policy = userAddress ?
+        await contracts.checkPolicy(userAddress, intent!.tokenIn, intent!.tokenOut, intent!.amountIn) :
+        { compliant: true, violations: [] };
+
+      return {
+        intent: intent!,
+        simulation,
+        policy
+      };
+    })
+  );
+
+  // Calculate gas savings
+  const individualGas = results.reduce((sum, r) => sum + Number(r.simulation.gasEstimate), 0);
+  const batchGas = Math.floor(individualGas * 0.7); // ~30% gas savings
+  const gasSavings = individualGas - batchGas;
+
+  res.json({
+    trades: results,
+    totalGasEstimate: batchGas.toString(),
+    gasSavings: gasSavings.toString(),
+    gasSavingsPercent: '30%'
+  });
+}));
 
 // POST /api/agent/batch/execute - Requires 0.01 USDC payment (if x402 enabled)
-router.post('/batch/execute', requirePayment('0.01'), async (req, res) => {
-  try {
-    const { commands, userAddress } = req.body;
-    
-    if (!Array.isArray(commands) || commands.length === 0) {
-      return res.status(400).json({ error: 'commands array required' });
-    }
+router.post('/batch/execute', requirePayment('0.01'), asyncHandler(async (req: Request, res: Response) => {
+  const { commands, userAddress } = req.body;
 
-    if (commands.length > 10) {
-      return res.status(400).json({ error: 'Maximum 10 trades per batch' });
-    }
-
-    // Parse all intents
-    const intents = await Promise.all(
-      commands.map(cmd => openClaw.parseTradeIntent(cmd))
-    );
-
-    if (intents.some(intent => !intent)) {
-      return res.status(400).json({ error: 'Could not parse all trade intents' });
-    }
-
-    // Check policies for all trades
-    const policyChecks = await Promise.all(
-      intents.map(intent => 
-        contracts.checkPolicy(userAddress, intent!.tokenIn, intent!.tokenOut, intent!.amountIn)
-      )
-    );
-
-    const violations = policyChecks.filter(p => !p.compliant);
-    if (violations.length > 0) {
-      return res.status(400).json({ 
-        error: 'Policy violations detected', 
-        violations: violations.flatMap(v => v.violations)
-      });
-    }
-
-    // Simulate and encode all trades
-    const encodedTrades = await Promise.all(
-      intents.map(async (intent) => {
-        const simulation = await contracts.simulateTrade(intent!.tokenIn, intent!.tokenOut, intent!.amountIn);
-        const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
-        
-        return {
-          tokenIn: intent!.tokenIn,
-          tokenOut: intent!.tokenOut,
-          amountIn: intent!.amountIn,
-          minAmountOut
-        };
-      })
-    );
-
-    const batchData = contracts.encodeBatchTrades(encodedTrades);
-
-    res.json({
-      trades: intents,
-      transaction: {
-        to: process.env.VAULT_ROUTER_ADDRESS,
-        data: batchData,
-        value: '0' // Calculate total ETH value if needed
-      },
-      message: 'Batch transaction prepared. User must sign and submit.',
-      gasSavings: '~30%'
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  if (!Array.isArray(commands) || commands.length === 0) {
+    throw Errors.badRequest('commands array required');
   }
-});
+
+  if (commands.length > 10) {
+    throw Errors.badRequest('Maximum 10 trades per batch');
+  }
+
+  // Parse all intents
+  const intents = await Promise.all(
+    commands.map(cmd => openClaw.parseTradeIntent(cmd))
+  );
+
+  if (intents.some(intent => !intent)) {
+    throw Errors.badRequest('Could not parse all trade intents');
+  }
+
+  // Check policies for all trades
+  const policyChecks = await Promise.all(
+    intents.map(intent =>
+      contracts.checkPolicy(userAddress, intent!.tokenIn, intent!.tokenOut, intent!.amountIn)
+    )
+  );
+
+  const violations = policyChecks.filter(p => !p.compliant);
+  if (violations.length > 0) {
+    throw Errors.policyViolation(violations.flatMap(v => v.violations));
+  }
+
+  // Simulate and encode all trades
+  const encodedTrades = await Promise.all(
+    intents.map(async (intent) => {
+      const simulation = await contracts.simulateTrade(intent!.tokenIn, intent!.tokenOut, intent!.amountIn);
+      const minAmountOut = (BigInt(simulation.amountOut) * 97n / 100n).toString();
+
+      return {
+        tokenIn: intent!.tokenIn,
+        tokenOut: intent!.tokenOut,
+        amountIn: intent!.amountIn,
+        minAmountOut
+      };
+    })
+  );
+
+  const batchData = contracts.encodeBatchTrades(encodedTrades);
+
+  res.json({
+    trades: intents,
+    transaction: {
+      to: process.env.VAULT_ROUTER_ADDRESS,
+      data: batchData,
+      value: '0' // Calculate total ETH value if needed
+    },
+    message: 'Batch transaction prepared. User must sign and submit.',
+    gasSavings: '~30%'
+  });
+}));
 
 // POST /api/agent/policy/set - Requires 0.0005 USDC payment (if x402 enabled)
-router.post('/policy/set', requirePayment('0.0005'), async (req, res) => {
-  try {
-    const { userAddress, maxSlippageBps, maxTradeSize, cooldownSeconds, tokenAllowlist } = req.body;
+router.post('/policy/set', requirePayment('0.0005'), asyncHandler(async (req: Request, res: Response) => {
+  const { userAddress, maxSlippageBps, maxTradeSize, cooldownSeconds, tokenAllowlist } = req.body;
 
-    if (!userAddress) {
-      return res.status(400).json({ error: 'userAddress required' });
-    }
-
-    const data = contracts.encodePolicyUpdate(
-      maxSlippageBps || 300,
-      maxTradeSize || '1000000000000000000',
-      cooldownSeconds || 60,
-      tokenAllowlist || []
-    );
-
-    res.json({
-      transaction: {
-        to: process.env.VAULT_ROUTER_ADDRESS,
-        data
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  if (!userAddress) {
+    throw Errors.badRequest('userAddress required');
   }
-});
+
+  const data = contracts.encodePolicyUpdate(
+    maxSlippageBps || 300,
+    maxTradeSize || '1000000000000000000',
+    cooldownSeconds || 60,
+    tokenAllowlist || []
+  );
+
+  res.json({
+    transaction: {
+      to: process.env.VAULT_ROUTER_ADDRESS,
+      data
+    }
+  });
+}));
 
 // GET /api/agent/portfolio/:address - Requires 0.001 USDC payment (if x402 enabled)
-router.get('/portfolio/:address', requirePayment('0.001'), async (req, res) => {
-  try {
-    const { address } = req.params;
-    const tokens = (req.query.tokens as string)?.split(',') || [];
+router.get('/portfolio/:address', requirePayment('0.001'), asyncHandler(async (req: Request, res: Response) => {
+  const { address } = req.params;
+  const tokens = (req.query.tokens as string)?.split(',') || [];
 
-    if (tokens.length === 0) {
-      return res.status(400).json({ error: 'tokens query parameter required (comma-separated addresses)' });
-    }
-
-    const balances = await Promise.all(
-      tokens.map(token => contracts.getVaultBalance(address, token))
-    );
-
-    const prices = await coinGecko.getMultipleTokenPrices(tokens);
-
-    const portfolio = tokens.map((token, i) => ({
-      token,
-      symbol: 'TBD',
-      balance: balances[i],
-      usdValue: coinGecko.formatUSD(balances[i], 18, prices[token.toLowerCase()] || 0)
-    }));
-
-    const totalUSD = portfolio.reduce((sum, item) => {
-      const val = parseFloat(item.usdValue.replace('$', ''));
-      return sum + (isNaN(val) ? 0 : val);
-    }, 0);
-
-    res.json({
-      address,
-      portfolio,
-      totalUSD: `$${totalUSD.toFixed(2)}`
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+  if (tokens.length === 0) {
+    throw Errors.badRequest('tokens query parameter required (comma-separated addresses)');
   }
-});
+
+  const balances = await Promise.all(
+    tokens.map(token => contracts.getVaultBalance(address, token))
+  );
+
+  const prices = await coinGecko.getMultipleTokenPrices(tokens);
+
+  const portfolio = tokens.map((token, i) => ({
+    token,
+    symbol: 'TBD',
+    balance: balances[i],
+    usdValue: coinGecko.formatUSD(balances[i], 18, prices[token.toLowerCase()] || 0)
+  }));
+
+  const totalUSD = portfolio.reduce((sum, item) => {
+    const val = parseFloat(item.usdValue.replace('$', ''));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
+
+  res.json({
+    address,
+    portfolio,
+    totalUSD: `$${totalUSD.toFixed(2)}`
+  });
+}));
+
+// Apply error handler middleware
+router.use(errorHandler);
 
 export default router;

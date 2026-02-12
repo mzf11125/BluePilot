@@ -1,5 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
+import { useSIWE } from '../hooks/useSIWE';
 
 // SVG Icon Components
 const HomeIcon = () => (
@@ -43,6 +45,8 @@ const iconMap: Record<string, () => JSX.Element> = {
 export const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isConnected } = useAccount();
+  const { isSignedIn, isSigningIn, signInError, signIn, signOut } = useSIWE();
 
   const tabs = [
     { path: '/app', label: 'Home', iconKey: 'home' },
@@ -63,8 +67,32 @@ export const AppLayout = () => {
             <img src="/plane.svg" alt="BluePilot" className="w-8 h-8" />
             <h1 className="text-xl font-bold">BluePilot</h1>
           </div>
-          <ConnectButton />
+          <div className="flex items-center gap-3">
+            {isConnected && !isSignedIn && (
+              <button
+                onClick={signIn}
+                disabled={isSigningIn}
+                className="px-4 py-2 bg-sky text-white font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSigningIn ? 'Signing...' : 'Sign In'}
+              </button>
+            )}
+            {isSignedIn && (
+              <button
+                onClick={signOut}
+                className="px-4 py-2 bg-gray-100 text-gray-700 font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
+              >
+                Sign Out
+              </button>
+            )}
+            <ConnectButton />
+          </div>
         </div>
+        {signInError && (
+          <div className="container mx-auto mt-2">
+            <p className="text-red-500 text-sm font-medium">{signInError}</p>
+          </div>
+        )}
       </div>
 
       {/* Main Content - Scrollable */}

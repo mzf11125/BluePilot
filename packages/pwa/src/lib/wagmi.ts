@@ -8,3 +8,10 @@ export const config = getDefaultConfig({
   chains: [base, baseSepolia],
   ssr: false,
 });
+
+// OnchainKit configuration
+export const onchainKitConfig = {
+  apiKey: import.meta.env.VITE_ONCHAINKIT_API_KEY,
+  chain: base, // Default to Base mainnet
+};
+
