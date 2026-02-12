@@ -4,16 +4,17 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   interactive?: boolean;
+  variant?: 'cyber' | 'terminal';
 }
 
-export const Card = ({ children, className = '', interactive = false }: CardProps) => {
-  const baseClasses = 'bg-white border-4 border-black shadow-brutal-lg p-6 transition-all duration-200';
-  const interactiveClasses = interactive
-    ? 'cursor-pointer hover:translate-x-1 hover:translate-y-1 hover:shadow-brutal active:translate-x-0 active:translate-y-0 active:shadow-brutal-lg'
-    : '';
+export const Card = ({ children, className = '', interactive = false, variant = 'cyber' }: CardProps) => {
+  const variants = {
+    cyber: 'card-cyber bg-dark-surface border-cyber-primary',
+    terminal: 'card-terminal bg-dark-surface border-cyber-primary font-mono',
+  };
 
   return (
-    <div className={`${baseClasses} ${interactiveClasses} ${className}`}>
+    <div className={`${variants[variant]} ${interactive ? 'card-cyber-interactive cursor-pointer' : ''} ${className} group`}>
       {children}
     </div>
   );

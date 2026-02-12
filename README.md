@@ -13,11 +13,17 @@ Powered by secure smart contracts, an AI agent, and a modern mobile app, BluePil
 
 ## App Preview
 
-[image](https://drive.google.com/file/d/1k5O0WyOFXQEs_LTRCxRYzjXBZm6HLdAh/view?usp=sharing)
+<img src="img/Screenshot From 2026-02-12 00-09-29.png" alt="BluePilot App Screenshot 1" width="300"/>
+<img src="img/Screenshot From 2026-02-12 10-31-41.png" alt="BluePilot App Screenshot 2" width="300"/>
+<img src="img/Screenshot From 2026-02-12 10-31-51.png" alt="BluePilot App Screenshot 3" width="300"/>
+<img src="img/Screenshot From 2026-02-12 10-31-55.png" alt="BluePilot App Screenshot 4" width="300"/>
+<img src="img/Screenshot From 2026-02-12 10-31-58.png" alt="BluePilot App Screenshot 5" width="300"/>
+<img src="img/Screenshot From 2026-02-12 10-32-02.png" alt="BluePilot App Screenshot 6" width="300"/>
+<img src="img/Screenshot From 2026-02-12 10-32-04.png" alt="BluePilot App Screenshot 7" width="300"/>
 
 ## Demo
 
-[https://youtu.be/CCVE27igG6I](https://youtu.be/CCVE27igG6I)
+[![BluePilot Demo](https://img.youtube.com/vi/CCVE27igG6I/0.jpg)](https://youtu.be/CCVE27igG6I)
 
 ## Architecture
 

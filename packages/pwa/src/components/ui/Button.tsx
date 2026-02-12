@@ -1,20 +1,27 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger';
-  children: React.ReactNode;
+  variant?: 'cyber' | 'terminal' | 'neon';
+  children: ReactNode;
+  className?: string;
+  fullWidth?: boolean;
 }
 
-export const Button = ({ variant = 'primary', children, className = '', ...props }: ButtonProps) => {
+export const Button = ({ variant = 'cyber', children, className = '', fullWidth = false, ...props }: ButtonProps) => {
   const variants = {
-    primary: 'bg-sky text-white hover:bg-sky-600 disabled:bg-sky-300',
-    secondary: 'bg-white text-black hover:bg-gray-50 disabled:bg-gray-200',
-    danger: 'bg-red-500 text-white hover:bg-red-600 disabled:bg-red-300'
+    cyber: 'btn-cyber text-dark-text border-neon-pink hover:bg-dark-surface hover:border-neon-green hover:text-cyber-primary hover:shadow-glow',
+    terminal: 'bg-dark-surface border-cyber-primary font-mono text-neon-green hover:shadow-inner btn-terminal',
+    neon: `btn-neon-green text-black btn-neon-green-glow border-neon-green hover:bg-neon-green hover:shadow-neon-green-glow',
   };
+
+  const widthClass = fullWidth ? 'w-full' : '';
 
   return (
     <button
-      className={`px-6 py-3 font-bold border-3 border-black shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-brutal ${variants[variant]} ${className}`}
+      className={`${variants[variant]} ${widthClass} ${className} group relative`}
+      style={{
+        clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 2px), 10px 100%)',
+      }}
       {...props}
     >
       {children}
