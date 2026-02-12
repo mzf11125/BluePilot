@@ -8,13 +8,34 @@
   body {
     @apply bg-brutalism-bg font-sans antialiased;
   }
+
+  /* Focus visible styles for accessibility */
+  *:focus-visible {
+    @apply outline-focus shadow-focus;
+  }
+
+  /* Skip focus styles for mouse users */
+  *:focus:not(:focus-visible) {
+    @apply outline-none;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer utilities {
   .btn-brutal {
-    @apply border-3 border-black shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all;
+    @apply border-3 border-black shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all focus-visible:translate-x-0 focus-visible:translate-y-0 focus-visible:shadow-brutal;
   }
-  
+
   .card-brutal {
     @apply border-4 border-black shadow-brutal-lg bg-white;
   }

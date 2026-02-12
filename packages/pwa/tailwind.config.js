@@ -24,7 +24,8 @@ export default {
           bg: '#FAFAFA',
           dark: '#0A0B0D',
           border: '#000000',
-        }
+        },
+        'focus-ring': '#0EA5E9',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -34,10 +35,30 @@ export default {
         'brutal': '4px 4px 0px 0px rgba(0, 0, 0, 1)',
         'brutal-lg': '8px 8px 0px 0px rgba(0, 0, 0, 1)',
         'brutal-sky': '4px 4px 0px 0px rgba(14, 165, 233, 1)',
+        'focus': '0 0 0 3px rgba(14, 165, 233, 0.5)',
       },
       borderWidth: {
         '3': '3px',
         '4': '4px',
+      },
+      outline: {
+        'focus': '3px solid #0EA5E9',
+      },
+      spacing: {
+        '18': '4.5rem',
+      },
+      keyframes: {
+        fly: {
+          'from': {
+            transform: 'translateX(-100px)',
+          },
+          'to': {
+            transform: 'translateX(calc(100vw + 100px))',
+          },
+        },
+      },
+      animation: {
+        'fly-slow': 'fly 20s linear infinite',
       },
     },
   },

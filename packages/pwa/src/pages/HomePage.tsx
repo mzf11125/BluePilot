@@ -22,7 +22,7 @@ export const HomePage = () => {
         <h2 className="text-xl font-bold mb-4">Your Tokens</h2>
         <div className="space-y-3">
           {tokens.map(token => (
-            <Card key={token.symbol} className="p-4">
+            <Card key={token.symbol} className="p-4" interactive>
               <div className="flex justify-between items-center">
                 <div>
                   <p className="font-bold text-lg">{token.symbol}</p>
@@ -43,7 +43,7 @@ export const HomePage = () => {
         <h2 className="text-xl font-bold mb-4">Recent Trades</h2>
         <div className="space-y-3">
           {recentTrades.map(tx => (
-            <Card key={tx.hash} className="p-4">
+            <Card key={tx.hash} className="p-4" interactive>
               <div className="flex justify-between items-center mb-2">
                 <p className="font-bold">
                   {tx.fromAmount} {tx.from} → {tx.toAmount} {tx.to}
