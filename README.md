@@ -11,6 +11,14 @@ Instead of constantly watching charts, manually swapping tokens, or reacting emo
 
 Powered by secure smart contracts, an AI agent, and a modern mobile app, BluePilot makes trading on Base safer, simpler, and always under your control.
 
+## App Preview
+
+[image](https://drive.google.com/file/d/1k5O0WyOFXQEs_LTRCxRYzjXBZm6HLdAh/view?usp=sharing)
+
+## Demo
+
+[https://youtu.be/CCVE27igG6I](https://youtu.be/CCVE27igG6I)
+
 ## Architecture
 
 ```mermaid
