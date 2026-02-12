@@ -7,7 +7,7 @@ import {
   setSession,
   clearSession,
   isValidChain,
-  SIWESession,
+  type SIWESession,
 } from '../lib/siwe';
 
 interface UseSIWEReturn {

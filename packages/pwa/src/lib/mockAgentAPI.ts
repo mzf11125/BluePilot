@@ -97,7 +97,7 @@ class MockAgentAPI {
     return token?.price || 1;
   }
 
-  async simulate(command: string, userAddress?: string): Promise<SimulateResponse> {
+  async simulate(command: string, _userAddress?: string): Promise<SimulateResponse> {
     await this.delay();
 
     const intent = this.parseCommand(command);
@@ -142,7 +142,7 @@ class MockAgentAPI {
     };
   }
 
-  async execute(command: string, userAddress: string): Promise<any> {
+  async execute(command: string, _userAddress: string): Promise<any> {
     await this.delay();
 
     const intent = this.parseCommand(command);
@@ -191,7 +191,7 @@ class MockAgentAPI {
     };
   }
 
-  async batchExecute(commands: string[], userAddress: string): Promise<any> {
+  async batchExecute(commands: string[], _userAddress: string): Promise<any> {
     await this.delay(800);
 
     if (commands.length > 10) {
@@ -212,7 +212,7 @@ class MockAgentAPI {
     };
   }
 
-  async getPolicy(address: string): Promise<PolicyResponse> {
+  async getPolicy(_address: string): Promise<PolicyResponse> {
     await this.delay();
 
     return {
@@ -224,7 +224,7 @@ class MockAgentAPI {
     };
   }
 
-  async setPolicy(userAddress: string, policy: Partial<PolicyResponse>): Promise<any> {
+  async setPolicy(_userAddress: string, _policy: Partial<PolicyResponse>): Promise<any> {
     await this.delay();
 
     return {

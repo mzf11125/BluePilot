@@ -15,7 +15,7 @@ interface Message {
 }
 
 export const ChatInterface = () => {
-  const { tokens, policy, transactions, updatePolicy, addTransaction, updateTransaction } = useApp();
+  const { tokens, policy: _policy, transactions: _transactions, updatePolicy: _updatePolicy, addTransaction, updateTransaction } = useApp();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
@@ -225,7 +225,7 @@ export const ChatInterface = () => {
     }
   };
 
-  const handlePolicy = async (input: string) => {
+  const handlePolicy = async (_input: string) => {
     try {
       const policyData = await mockAgentAPI.getPolicy('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb');
 

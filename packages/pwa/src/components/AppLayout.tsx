@@ -34,7 +34,7 @@ const HistoryIcon = () => (
   </svg>
 );
 
-const iconMap: Record<string, () => JSX.Element> = {
+const iconMap: Record<string, () => React.ReactElement> = {
   home: HomeIcon,
   trade: TradeIcon,
   strategy: ChartIcon,
